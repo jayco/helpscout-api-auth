@@ -7,24 +7,66 @@ RSpec.describe Helpscout::Api::Auth::Token do
     end.to raise_error(ArgumentError)
   end
 
-  it 'raises an error if request fails' do
-    expect do
-      stub_request(:post, 'https://api.helpscout.net/v2/oauth2/token').to_raise(StandardError)
+  context 'fetch' do
+    it 'raises an error if request fails' do
+      expect do
+        stub_request(:post, 'https://api.helpscout.net/v2/oauth2/token').to_raise(StandardError)
+        token = Helpscout::Api::Auth::Token.new(client_id: 'some id', client_secret: 'keep it secret')
+        token.fetch
+      end.to raise_error(StandardError)
+    end
+
+    it 'returns a token on success' do
+      body = URI.encode_www_form(client_id: 'some id', client_secret: 'keep it secret', grant_type: 'client_credentials')
+
+      stub_request(:post, 'https://api.helpscout.net/v2/oauth2/token')
+        .with(body: body, headers: { 'Content-Type': 'application/x-www-form-urlencoded' })
+        .to_return(body: { expires_in: '1', access_token: 'some_token' }.to_json)
+
       token = Helpscout::Api::Auth::Token.new(client_id: 'some id', client_secret: 'keep it secret')
       token.fetch
-    end.to raise_error(StandardError)
-  end
+      expect(token.access_token).to eql('some_token')
+    end
 
-  it 'returns a token on success' do
-    body = URI.encode_www_form(client_id: 'some id', client_secret: 'keep it secret', grant_type: 'client_credentials')
+    it 'refresh a token when expired' do
+      body = URI.encode_www_form(client_id: 'some id', client_secret: 'keep it secret', grant_type: 'client_credentials')
 
-    stub_request(:post, 'https://api.helpscout.net/v2/oauth2/token')
-      .with(body: body, headers: { 'Content-Type': 'application/x-www-form-urlencoded' })
-      .to_return(body: { expires_in: '1', access_token: 'some_token' }.to_json)
+      stub_request(:post, 'https://api.helpscout.net/v2/oauth2/token')
+        .with(body: body, headers: { 'Content-Type': 'application/x-www-form-urlencoded' })
+        .to_return(body: { expires_in: '1', access_token: 'some_token' }.to_json)
 
-    token = Helpscout::Api::Auth::Token.new(client_id: 'some id', client_secret: 'keep it secret')
-    token.fetch
-    expect(token.access_token).to eql('some_token')
+      token = Helpscout::Api::Auth::Token.new(client_id: 'some id', client_secret: 'keep it secret')
+      token.fetch
+
+      expect(token.access_token).to eql('some_token')
+      sleep 1
+
+      stub_request(:post, 'https://api.helpscout.net/v2/oauth2/token')
+        .with(body: body, headers: { 'Content-Type': 'application/x-www-form-urlencoded' })
+        .to_return(body: { expires_in: '1', access_token: 'some_other_token' }.to_json)
+
+      token.fetch
+      expect(token.access_token).to eql('some_other_token')
+    end
+
+    it 'do not refresh a token when valid' do
+      body = URI.encode_www_form(client_id: 'some id', client_secret: 'keep it secret', grant_type: 'client_credentials')
+
+      stub_request(:post, 'https://api.helpscout.net/v2/oauth2/token')
+        .with(body: body, headers: { 'Content-Type': 'application/x-www-form-urlencoded' })
+        .to_return(body: { expires_in: '10', access_token: 'some_token' }.to_json)
+
+      token = Helpscout::Api::Auth::Token.new(client_id: 'some id', client_secret: 'keep it secret')
+      token.fetch
+      expect(token.access_token).to eql('some_token')
+
+      stub_request(:post, 'https://api.helpscout.net/v2/oauth2/token')
+        .with(body: body, headers: { 'Content-Type': 'application/x-www-form-urlencoded' })
+        .to_return(body: { expires_in: '1', access_token: 'some_other_token' }.to_json)
+
+      token.fetch
+      expect(token.access_token).to eql('some_token')
+    end
   end
 
   context 'to_s' do
@@ -39,45 +81,5 @@ RSpec.describe Helpscout::Api::Auth::Token do
       token.fetch
       expect(token.to_s).to eql('Bearer some_token')
     end
-  end
-
-  it 'refresh a token on when expired' do
-    body = URI.encode_www_form(client_id: 'some id', client_secret: 'keep it secret', grant_type: 'client_credentials')
-
-    stub_request(:post, 'https://api.helpscout.net/v2/oauth2/token')
-      .with(body: body, headers: { 'Content-Type': 'application/x-www-form-urlencoded' })
-      .to_return(body: { expires_in: '1', access_token: 'some_token' }.to_json)
-
-    token = Helpscout::Api::Auth::Token.new(client_id: 'some id', client_secret: 'keep it secret')
-    token.fetch
-
-    expect(token.access_token).to eql('some_token')
-    sleep 1
-
-    stub_request(:post, 'https://api.helpscout.net/v2/oauth2/token')
-      .with(body: body, headers: { 'Content-Type': 'application/x-www-form-urlencoded' })
-      .to_return(body: { expires_in: '1', access_token: 'some_other_token' }.to_json)
-
-    token.fetch
-    expect(token.access_token).to eql('some_other_token')
-  end
-
-  it 'do not refresh a token when valid' do
-    body = URI.encode_www_form(client_id: 'some id', client_secret: 'keep it secret', grant_type: 'client_credentials')
-
-    stub_request(:post, 'https://api.helpscout.net/v2/oauth2/token')
-      .with(body: body, headers: { 'Content-Type': 'application/x-www-form-urlencoded' })
-      .to_return(body: { expires_in: '10', access_token: 'some_token' }.to_json)
-
-    token = Helpscout::Api::Auth::Token.new(client_id: 'some id', client_secret: 'keep it secret')
-    token.fetch
-    expect(token.access_token).to eql('some_token')
-
-    stub_request(:post, 'https://api.helpscout.net/v2/oauth2/token')
-      .with(body: body, headers: { 'Content-Type': 'application/x-www-form-urlencoded' })
-      .to_return(body: { expires_in: '1', access_token: 'some_other_token' }.to_json)
-
-    token.fetch
-    expect(token.access_token).to eql('some_token')
   end
 end
