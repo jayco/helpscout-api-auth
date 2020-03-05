@@ -13,11 +13,12 @@ module Helpscout
           @endpoint = endpoint
           @expires_in = Time.now + expires_in
           @credentials = URI.encode_www_form(client_id: client_id, client_secret: client_secret, grant_type: 'client_credentials')
-          @access_token = nil
+          get_token
         end
 
-        def fetch
-          refresh
+        def refresh
+          get_token if is_expired? || @access_token.nil?
+          @access_token
         end
 
         def to_s
@@ -25,11 +26,6 @@ module Helpscout
         end
 
         private
-
-        def refresh
-          get_token if is_expired? || @access_token.nil?
-          @access_token
-        end
 
         def get_token
           res = Net::HTTP.post(URI(@endpoint), @credentials, { 'Content-Type': 'application/x-www-form-urlencoded' }.freeze)

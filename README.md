@@ -34,17 +34,20 @@ Creates a new Token class
 | `expires_in`    | `integer` | **Optional** Defaults to `300`                                       |
 
 ```ruby
-require 'helpscout-api-auth'
+require 'helpscout/api/auth'
 
 token = Helpscout::Api::Auth::Token.new(client_id: 'some id', client_secret: 'keep it secret')
+token.access_token
+# => 'BMEv1lmcNgDBpOFNHo8TPlODMrF3BG5T'
+
 ```
 
-### fetch
+### refresh
 
-Fetches or refreshes a token from the api
+Refreshes a token from the api
 
 ```ruby
-access_token = token.fetch
+access_token = token.refresh
 # => 'BMEv1lmcNgDBpOFNHo8TPlODMrF3BG5T'
 
 token.access_token
