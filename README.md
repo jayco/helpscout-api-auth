@@ -1,5 +1,7 @@
 # Helpscout::Api::Auth
 
+[![Build status](https://badge.buildkite.com/1a7a4e8f4426115e361e8f149c0d4d93fe5fb886fec80fd6c1.svg)](https://buildkite.com/jayco/helpscout-api-auth)
+
 Gem for authenticating with the HelpScout V2 API.
 
 See [https://developer.helpscout.com/mailbox-api/overview/authentication/](https://developer.helpscout.com/mailbox-api/overview/authentication/)
